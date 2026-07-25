@@ -1,6 +1,6 @@
 import sqlite3
 
-conn = sqlite3.connect("database/traceroute.db")
+conn = sqlite3.connect("/tmp/traceroute.db")
 
 cursor = conn.cursor()
 cursor.execute("""
