@@ -1,0 +1,398 @@
+<!-- <!-- <!DOCTYPE html>
+<html>
+
+<head>
+    <title>Analytics Dashboard</title>
+</head>
+
+<body>
+
+<h1>Analytics Dashboard</h1>
+
+<hr>
+
+<p><b>Tracking ID :</b> {{ tracking_id }}</p>
+
+<p><b>Total Clicks :</b> {{ total_clicks }}</p>
+
+<p><b>Parent Tracking ID :</b> {{ parent_tracking }}</p>
+
+<p><b>Generation :</b> {{ generation }}</p>
+
+<p><b>Total Children :</b> {{ total_children }}</p>
+
+<hr>
+
+<h2>Click History</h2>
+
+<table border="1" cellpadding="10">
+
+<tr>
+    <th>IP Address</th>
+    <th>Browser</th>
+    <th>Date & Time</th>
+</tr>
+
+{% for click in click_history %}
+
+<tr>
+    <td>{{ click.ip_address }}</td>
+    <td>{{ click.browser }}</td>
+    <td>{{ click.clicked_at }}</td>
+</tr>
+
+{% endfor %}
+
+</table>
+
+</body>
+</html> -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analytics — {{ tracking_id }} · TraceRoute</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #08090d;
+    --panel: #0e1015;
+    --panel-alt: #12141b;
+    --line: #1c1f28;
+    --line-soft: #ffffff0a;
+    --text: #eef0f5;
+    --muted: #6c7180;
+    --muted-dim: #4b4f5c;
+    --violet: #9b8bfa;
+    --violet-soft: #9b8bfa14;
+    --mint: #5fe3c4;
+    --mint-soft: #5fe3c414;
+    --coral: #ff7a85;
+    --coral-soft: #ff7a8514;
+    --radius-lg: 18px;
+    --radius-md: 12px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:
+      radial-gradient(1100px 600px at 85% -10%, #1a1530 0%, transparent 55%),
+      radial-gradient(900px 500px at -10% 90%, #0e2620 0%, transparent 50%),
+      var(--bg);
+    color: var(--text);
+    font-family:'Inter', sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{ font-family:'JetBrains Mono', monospace; letter-spacing:-0.01em; }
+  h1,h2,h3{ font-family:'Space Grotesk', sans-serif; letter-spacing:-0.01em; }
+  a{ color:inherit; }
+
+  main{ max-width: 1180px; margin:0 auto; padding: 30px 30px 50px; }
+
+  header.top{
+    display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px; gap:20px; flex-wrap:wrap;
+  }
+  .brand{ display:flex; align-items:center; gap:9px; margin-bottom:14px; }
+  .brand-mark{
+    width:28px; height:28px; border-radius:8px;
+    background:#0a0b10; border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .brand-mark svg{ width:14px; height:14px; }
+  .brand span{ font-weight:600; font-size:13.5px; color:var(--muted); }
+
+  header.top h1{ font-size:22px; font-weight:600; }
+  header.top .tid{ color:var(--muted); font-size:12.5px; margin-top:5px; }
+  header.top .tid .mono{ color: var(--violet); }
+  .pill{
+    display:flex; align-items:center; gap:7px; flex-shrink:0;
+    background: var(--panel-alt); border:1px solid var(--line);
+    padding:7px 13px 7px 11px; border-radius:20px; font-size:12px; color:var(--muted); font-weight:500;
+  }
+  .pill .pulse{
+    width:6px; height:6px; border-radius:50%; background:var(--mint);
+    box-shadow:0 0 0 0 rgba(95,227,196,0.6); animation: pulse 2.2s infinite;
+  }
+  @keyframes pulse{
+    0%{ box-shadow:0 0 0 0 rgba(95,227,196,0.45); }
+    70%{ box-shadow:0 0 0 7px rgba(95,227,196,0); }
+    100%{ box-shadow:0 0 0 0 rgba(95,227,196,0); }
+  }
+
+  /* ---- Stat cards ---- */
+  .stats{ display:grid; grid-template-columns: repeat(5, 1fr); gap:12px; margin-bottom:16px; }
+  .stat{
+    background: var(--panel); border:1px solid var(--line); border-radius: var(--radius-md);
+    padding: 16px 17px;
+  }
+  .stat .lbl{ font-size:10.5px; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted-dim); font-weight:600; margin-bottom:9px; }
+  .stat .val{ font-size:19px; font-weight:700; font-family:'Space Grotesk'; word-break:break-all; }
+  .stat .val.mono{ font-size:14px; color:var(--violet); }
+
+  /* ---- Lineage strip ---- */
+  .lineage{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    background: var(--panel); border:1px solid var(--line); border-radius: var(--radius-md);
+    padding: 14px 18px; margin-bottom: 20px; font-size:12.5px;
+  }
+  .lineage .node{
+    display:flex; align-items:center; gap:8px;
+    background: var(--panel-alt); border:1px solid var(--line);
+    padding:7px 12px; border-radius:8px;
+  }
+  .lineage .node.current{ border-color: var(--violet); background: var(--violet-soft); }
+  .lineage .node .k{ color:var(--muted); }
+  .lineage .node .v{ color:var(--text); }
+  .lineage .arrow{ color:var(--muted-dim); }
+  .lineage .gen-badge{
+    margin-left:auto; background:var(--mint-soft); color:var(--mint);
+    padding:5px 11px; border-radius:20px; font-size:11px; font-weight:600;
+  }
+
+  /* ---- Layout grid ---- */
+  .grid2{ display:grid; grid-template-columns: 1.5fr 1fr; gap:14px; margin-bottom:14px; }
+
+  .panel{
+    background: var(--panel); border:1px solid var(--line); border-radius: var(--radius-lg);
+    padding: 22px 24px;
+  }
+  .panel-head{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; }
+  .panel-head h3{ font-size:14.5px; font-weight:600; }
+  .panel-head .sub{ font-size:11.5px; color:var(--muted); margin-top:3px; }
+
+  /* ---- Map ---- */
+  .map-wrap{ position:relative; width:100%; }
+  .map-svg{ width:100%; height:auto; display:block; }
+  .continent{ fill:#171b25; stroke:var(--line); stroke-width:1; }
+  .grat{ stroke:#ffffff08; stroke-width:1; }
+  .marker{ cursor:pointer; }
+  .marker circle.core{ fill:var(--mint); }
+  .marker circle.ring{ fill:none; stroke:var(--mint); stroke-width:1; opacity:0.5; }
+  .marker.flagged circle.core{ fill:var(--coral); }
+  .marker.flagged circle.ring{ stroke:var(--coral); }
+  .map-legend{ display:flex; gap:18px; margin-top:14px; }
+  .map-legend .item{ display:flex; align-items:center; gap:6px; font-size:11px; color:var(--muted); }
+  .map-legend .sw{ width:8px; height:8px; border-radius:50%; }
+
+  /* ---- Top locations ---- */
+  .loc-row{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding: 10px 0; border-bottom:1px solid var(--line-soft); font-size:12.5px;
+  }
+  .loc-row:last-child{ border-bottom:none; }
+  .loc-row .name{ display:flex; align-items:center; gap:9px; }
+  .loc-row .flag{ font-size:15px; }
+  .loc-row .bar-wrap{ display:flex; align-items:center; gap:8px; }
+  .loc-row .bar{ width:70px; height:5px; border-radius:3px; background:var(--line); overflow:hidden; }
+  .loc-row .bar span{ display:block; height:100%; border-radius:3px; background:var(--violet); }
+  .loc-row .count{ color:var(--muted); font-family:'JetBrains Mono'; font-size:11.5px; width:26px; text-align:right; }
+
+  /* ---- Table ---- */
+  table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  thead th{
+    text-align:left; color:var(--muted-dim); font-weight:600; font-size:10.5px;
+    text-transform:uppercase; letter-spacing:0.06em; padding-bottom:11px;
+    border-bottom:1px solid var(--line);
+  }
+  tbody td{ padding:12px 10px 12px 0; border-bottom:1px solid var(--line-soft); color:var(--text); vertical-align:middle; }
+  tbody tr:last-child td{ border-bottom:none; }
+  tbody tr:hover td{ background: var(--line-soft); }
+  .ip{ font-family:'JetBrains Mono'; font-size:12px; }
+  .browser-cell{ display:flex; align-items:center; gap:8px; color:var(--muted); }
+  .loc-cell{ color:var(--muted); font-size:12px; }
+  .time-cell{ color:var(--muted); font-size:11.5px; font-family:'JetBrains Mono'; }
+  .badge{
+    display:inline-flex; align-items:center; gap:5px;
+    padding:3.5px 9px; border-radius:20px; font-size:10.5px; font-weight:600;
+  }
+  .badge.ok{ background:var(--mint-soft); color:var(--mint); }
+  .badge.flag{ background:var(--coral-soft); color:var(--coral); }
+  .badge.dot::before{ content:''; width:5px; height:5px; border-radius:50%; background:currentColor; flex-shrink:0; }
+
+  .empty{ text-align:center; padding:30px 0; color:var(--muted); font-size:13px; }
+
+  /* ---- Forwarding tree ---- */
+  .tree-scroll{ overflow-x:auto; padding-bottom:6px; }
+  .tree{
+    display:flex; justify-content:center; padding:20px 10px 8px;
+  }
+  .tree ul{
+    display:flex; padding-top:24px; position:relative;
+    transition:.2s;
+  }
+  .tree li{
+    display:flex; flex-direction:column; align-items:center;
+    list-style:none; position:relative; padding:24px 10px 0;
+  }
+  /* connector lines */
+  .tree li::before, .tree li::after{
+    content:''; position:absolute; top:0; right:50%;
+    border-top:1px solid var(--line); width:50%; height:24px;
+  }
+  .tree li::after{ right:auto; left:50%; border-left:1px solid var(--line); }
+  .tree li:only-child::after, .tree li:only-child::before{ display:none; }
+  .tree li:only-child{ padding-top:0; }
+  .tree li:first-child::before{ border:0 none; }
+  .tree li:last-child::after{ border:0 none; }
+  .tree li:last-child::before{ border-right:1px solid var(--line); border-radius:0 5px 0 0; }
+  .tree li:first-child::after{ border-radius:5px 0 0 0; }
+  .tree ul ul::before{
+    content:''; position:absolute; top:0; left:50%;
+    border-left:1px solid var(--line); width:0; height:24px;
+  }
+
+  .tree-node{
+    display:inline-flex; flex-direction:column; align-items:center; gap:4px;
+    background: var(--panel-alt); border:1px solid var(--line); border-radius:10px;
+    padding:10px 14px; min-width:96px;
+  }
+  .tree-node .id{ font-family:'JetBrains Mono'; font-size:11.5px; color:var(--text); }
+  .tree-node .meta{ display:flex; align-items:center; gap:6px; font-size:10px; color:var(--muted); }
+  .tree-node .meta .clk{ color:var(--mint); font-family:'JetBrains Mono'; }
+  .tree-node.current{ border-color:var(--violet); background:var(--violet-soft); }
+  .tree-node.current .id{ color:var(--violet); }
+  .tree-node.hot{ border-color:var(--coral); }
+  .tree-node.hot .meta .clk{ color:var(--coral); }
+
+  footer.note{ margin-top:18px; font-size:11px; color:var(--muted-dim); text-align:center; }
+
+  @media (max-width: 880px){
+    .stats{ grid-template-columns: repeat(2,1fr); }
+    .grid2{ grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<main>
+  <header class="top">
+    <div>
+      <div class="brand">
+        <div class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#9b8bfa" stroke-width="1.6"><path d="M3 12h4l2-7 4 14 2-7h6"/></svg></div>
+        <span>TraceRoute</span>
+      </div>
+      <h1>Link analytics</h1>
+      <div class="tid">Tracking ID · <span class="mono">{{ tracking_id }}</span></div>
+    </div>
+    <div class="pill"><span class="pulse"></span> Live</div>
+  </header>
+
+  <section class="stats" style="grid-template-columns: repeat(2, 1fr); max-width:420px;">
+    <div class="stat">
+      <div class="lbl">Total clicks</div>
+      <div class="val">{{ total_clicks }}</div>
+    </div>
+    <div class="stat">
+      <div class="lbl">Total children</div>
+      <div class="val">{{ total_children }}</div>
+    </div>
+  </section>
+
+  <section class="panel" style="margin-bottom:14px;">
+    <div class="panel-head">
+      <div>
+        <h3>Forwarding tree</h3>
+        <div class="sub">Every child link generated from the original — this link is highlighted</div>
+      </div>
+    </div>
+    <div class="tree-scroll">
+      <div class="tree" id="treeRoot"></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <div>
+        <h3>Click history</h3>
+        <div class="sub">Every recorded click for this link</div>
+      </div>
+    </div>
+    <table>
+      <thead>
+        <tr><th>IP address</th><th>Browser</th><th>Date &amp; time</th><th>Status</th></tr>
+      </thead>
+      <tbody id="clickTableBody">
+        {% for click in click_history %}
+        <tr data-ip="{{ click.ip_address }}">
+          <td class="ip">{{ click.ip_address }}</td>
+          <td class="browser-cell">{{ click.browser }}</td>
+          <td class="time-cell">{{ click.clicked_at }}</td>
+          <td class="status-cell"></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="empty">No clicks recorded yet for this link.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <footer class="note">Status is flagged when the same IP repeats 5+ times, which can indicate brute-force style activity.</footer>
+</main>
+
+<script>
+  const CURRENT_TRACKING_ID = "{{ tracking_id }}";
+  const treeData = {{ tree_data | tojson }};
+  const HOT_CLICKS_THRESHOLD = 10;
+
+  function renderNode(node){
+    const isCurrent = node.tracking_id === CURRENT_TRACKING_ID;
+    const isHot = node.clicks >= HOT_CLICKS_THRESHOLD;
+    const classes = ['tree-node', isCurrent ? 'current' : '', isHot ? 'hot' : ''].filter(Boolean).join(' ');
+
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <div class="${classes}">
+        <span class="id">${node.tracking_id}</span>
+        <span class="meta"><span class="clk">${node.clicks} clicks</span></span>
+      </div>
+    `;
+
+    if (node.children && node.children.length){
+      const ul = document.createElement('ul');
+      node.children.forEach(child => ul.appendChild(renderNode(child)));
+      li.appendChild(ul);
+    }
+
+    return li;
+  }
+
+  const treeRoot = document.getElementById('treeRoot');
+  if (treeData){
+    const topUl = document.createElement('ul');
+    topUl.appendChild(renderNode(treeData));
+    treeRoot.appendChild(topUl);
+  } else {
+    treeRoot.innerHTML = '<div class="empty">No tree data available.</div>';
+  }
+
+  // Click data passed from the backend
+  const clicks = [
+    {% for click in click_history %}
+    {
+      ip: "{{ click.ip_address }}",
+      browser: "{{ click.browser }}",
+      time: "{{ click.clicked_at }}"
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ];
+
+  // Count clicks per IP to flag repeat / brute-force-style activity
+  const ipCounts = {};
+  clicks.forEach(c => { ipCounts[c.ip] = (ipCounts[c.ip] || 0) + 1; });
+  const FLAG_THRESHOLD = 5;
+
+  // Fill status badges in the table
+  document.querySelectorAll('#clickTableBody tr[data-ip]').forEach(row => {
+    const ip = row.getAttribute('data-ip');
+    const flagged = ipCounts[ip] >= FLAG_THRESHOLD;
+    const cell = row.querySelector('.status-cell');
+    cell.innerHTML = flagged
+      ? '<span class="badge flag dot">flagged</span>'
+      : '<span class="badge ok dot">normal</span>';
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Links · TraceRoute</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #08090d;
+    --panel: #0e1015;
+    --panel-alt: #12141b;
+    --line: #1c1f28;
+    --line-soft: #ffffff0a;
+    --text: #eef0f5;
+    --muted: #6c7180;
+    --muted-dim: #4b4f5c;
+    --violet: #9b8bfa;
+    --violet-soft: #9b8bfa14;
+    --mint: #5fe3c4;
+    --mint-soft: #5fe3c414;
+    --coral: #ff7a85;
+    --radius-lg: 18px;
+    --radius-md: 12px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:
+      radial-gradient(1100px 600px at 85% -10%, #1a1530 0%, transparent 55%),
+      radial-gradient(900px 500px at -10% 90%, #0e2620 0%, transparent 50%),
+      var(--bg);
+    color: var(--text);
+    font-family:'Inter', sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{ font-family:'JetBrains Mono', monospace; letter-spacing:-0.01em; }
+  h1,h2{ font-family:'Space Grotesk', sans-serif; letter-spacing:-0.01em; }
+  a{ color:inherit; text-decoration:none; }
+
+  main{ max-width: 1000px; margin:0 auto; padding: 30px 30px 50px; }
+
+  header.top{ margin-bottom:24px; }
+  .brand{ display:flex; align-items:center; gap:9px; margin-bottom:14px; }
+  .brand-mark{
+    width:28px; height:28px; border-radius:8px;
+    background:#0a0b10; border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .brand-mark svg{ width:14px; height:14px; }
+  .brand span{ font-weight:600; font-size:13.5px; color:var(--muted); }
+  header.top h1{ font-size:22px; font-weight:600; margin-bottom:5px; }
+  header.top p{ color:var(--muted); font-size:12.5px; }
+  .back-link{
+    display:inline-flex; align-items:center; gap:6px; margin-bottom:16px;
+    color:var(--muted); font-size:12.5px; font-weight:500;
+  }
+  .back-link:hover{ color:var(--text); }
+
+  .panel{
+    background: var(--panel); border:1px solid var(--line); border-radius: var(--radius-lg);
+    padding: 10px 24px;
+  }
+  table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  thead th{
+    text-align:left; color:var(--muted-dim); font-weight:600; font-size:10.5px;
+    text-transform:uppercase; letter-spacing:0.06em; padding:16px 10px 12px 0;
+    border-bottom:1px solid var(--line);
+  }
+  tbody td{ padding:14px 10px 14px 0; border-bottom:1px solid var(--line-soft); color:var(--text); vertical-align:middle; }
+  tbody tr:last-child td{ border-bottom:none; }
+  tbody tr:hover td{ background: var(--line-soft); }
+  .id{ font-family:'JetBrains Mono'; color:var(--violet); font-size:12px; }
+  .dest{
+    color:var(--muted); font-size:12px; max-width:260px; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap; display:block;
+  }
+  .link-cell{ display:flex; align-items:center; gap:8px; }
+  .track-link{ color:var(--mint); max-width:180px; }
+  .copy-link-btn{
+    background:transparent; border:1px solid var(--line); color:var(--muted);
+    border-radius:6px; padding:3px 9px; font-size:10.5px; cursor:pointer; font-family:'Inter';
+    flex-shrink:0; transition: color .12s ease, border-color .12s ease;
+  }
+  .copy-link-btn:hover{ color:var(--text); border-color:#333747; }
+  .created{ color:var(--muted); font-size:11.5px; font-family:'JetBrains Mono'; }
+  .count{ font-family:'JetBrains Mono'; font-size:12.5px; }
+  .count.clicks{ color:var(--mint); }
+  .view-btn{
+    display:inline-flex; align-items:center; gap:6px;
+    background: var(--violet-soft); color:var(--violet); border:1px solid var(--line);
+    padding:6px 12px; border-radius:8px; font-size:11.5px; font-weight:600;
+    font-family:'Space Grotesk'; white-space:nowrap;
+    transition: opacity .12s ease;
+  }
+  .view-btn:hover{ opacity:0.8; }
+  .view-btn svg{ width:12px; height:12px; }
+
+  .empty{ text-align:center; padding:50px 0; color:var(--muted); font-size:13px; }
+</style>
+</head>
+<body>
+
+<main>
+  <header class="top">
+    <div class="brand">
+      <div class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#9b8bfa" stroke-width="1.6"><path d="M3 12h4l2-7 4 14 2-7h6"/></svg></div>
+      <span>TraceRoute</span>
+    </div>
+    <a href="/" class="back-link">← Back to dashboard</a>
+    <h1>My links</h1>
+    <p>Every tracking link you've generated so far</p>
+  </header>
+
+  <div class="panel">
+    {% if links and links|length > 0 %}
+    <table>
+      <thead>
+        <tr>
+          <th>Tracking ID</th>
+          <th>Tracking Link</th>
+          <th>Destination</th>
+          <th>Created</th>
+          <th>Clicks</th>
+          <th>Children</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for link in links %}
+        <tr>
+          <td class="id">{{ link.tracking_id }}</td>
+          <td>
+            <div class="link-cell">
+              <span class="dest mono track-link" title="{{ request.host_url }}t/{{ link.tracking_id }}">{{ request.host_url }}t/{{ link.tracking_id }}</span>
+              <button type="button" class="copy-link-btn" data-link="{{ request.host_url }}t/{{ link.tracking_id }}">Copy</button>
+            </div>
+          </td>
+          <td><span class="dest" title="{{ link.destination_url }}">{{ link.destination_url }}</span></td>
+          <td class="created">{{ link.created_at }}</td>
+          <td class="count clicks">{{ link.total_clicks }}</td>
+          <td class="count">{{ link.total_children }}</td>
+          <td>
+            <a class="view-btn" href="/analytics/{{ link.tracking_id }}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="12" width="4" height="8"/><rect x="10" y="7" width="4" height="13"/><rect x="17" y="3" width="4" height="17"/></svg>
+              View Analytics
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">No links generated yet. Go back to the dashboard to create your first one.</div>
+    {% endif %}
+  </div>
+</main>
+
+<script>
+  document.querySelectorAll('.copy-link-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      navigator.clipboard.writeText(btn.getAttribute('data-link'));
+      const original = btn.textContent;
+      btn.textContent = 'Copied';
+      setTimeout(() => { btn.textContent = original; }, 1200);
+    });
+  });
+</script>
+
+</body>
+</html>

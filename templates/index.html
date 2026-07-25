@@ -1,0 +1,688 @@
+<!-- <!DOCTYPE html>
+<html>
+
+<head>
+    <title>TraceRoute</title>
+</head>
+
+<body>
+
+    <h2>Create Tracking Link</h2>
+
+    <form action="/generate" method="POST">
+
+        <input
+            type="text"
+            name="url"
+            placeholder="Enter Destination URL"
+            required>
+
+        <br><br>
+
+        <button type="submit">
+            Generate
+        </button>
+
+    </form>
+
+</body>
+
+</html> -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TraceRoute — Signal Monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #08090d;
+    --panel: #0e1015;
+    --panel-alt: #12141b;
+    --line: #1c1f28;
+    --line-soft: #ffffff0a;
+    --text: #eef0f5;
+    --muted: #6c7180;
+    --muted-dim: #4b4f5c;
+    --violet: #9b8bfa;
+    --violet-soft: #9b8bfa14;
+    --mint: #5fe3c4;
+    --mint-soft: #5fe3c414;
+    --coral: #ff7a85;
+    --coral-soft: #ff7a8514;
+    --radius-lg: 18px;
+    --radius-md: 12px;
+    --radius-sm: 8px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{ scroll-behavior:smooth; }
+  body{
+    background:
+      radial-gradient(1100px 600px at 85% -10%, #1a1530 0%, transparent 55%),
+      radial-gradient(900px 500px at -10% 90%, #0e2620 0%, transparent 50%),
+      var(--bg);
+    color: var(--text);
+    font-family:'Inter', sans-serif;
+    min-height:100vh;
+    display:flex;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{ font-family:'JetBrains Mono', monospace; letter-spacing:-0.01em; }
+  h1,h2,h3{ font-family:'Space Grotesk', sans-serif; letter-spacing:-0.01em; }
+  a{ color:inherit; }
+  ::selection{ background:var(--violet-soft); color:var(--text); }
+
+  /* ---------- Sidebar ---------- */
+  aside{
+    width: 224px;
+    flex-shrink:0;
+    background: linear-gradient(180deg, var(--panel) 0%, #0a0b10 100%);
+    border-right: 1px solid var(--line);
+    padding: 26px 16px;
+    display:flex;
+    flex-direction:column;
+    gap: 26px;
+    height:100vh;
+    position:sticky;
+    top:0;
+  }
+  .brand{ display:flex; align-items:center; gap:10px; padding:0 6px; }
+  .brand-mark{
+    width:30px; height:30px; border-radius:9px;
+    background: #0a0b10;
+    border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .brand-mark svg{ width:15px; height:15px; }
+  .brand span{ font-weight:600; font-size:14.5px; letter-spacing:0.01em; }
+
+  .search-box{
+    display:flex; align-items:center; gap:8px;
+    background:#060708; border:1px solid var(--line); border-radius:9px;
+    padding:9px 10px; margin:0 2px;
+  }
+  .search-box svg{ width:14px; height:14px; color:var(--muted-dim); flex-shrink:0; }
+  .search-box input{
+    background:transparent; border:none; outline:none; color:var(--text);
+    font-family:'Inter'; font-size:12.5px; flex:1; min-width:0;
+  }
+  .search-box input::placeholder{ color:var(--muted-dim); }
+  .search-box kbd{
+    font-family:'JetBrains Mono'; font-size:10px; color:var(--muted-dim);
+    border:1px solid var(--line); border-radius:5px; padding:2px 5px;
+  }
+
+  .nav-group .nav-label{
+    font-size:10.5px; text-transform:uppercase; letter-spacing:0.1em;
+    color: var(--muted-dim); margin: 0 8px 10px; font-weight:600;
+  }
+  nav a{
+    display:flex; align-items:center; gap:11px;
+    padding:8.5px 10px; border-radius:9px;
+    color: var(--muted); text-decoration:none; font-size:13.5px; font-weight:500;
+    margin-bottom:1px;
+    transition: background .12s ease, color .12s ease;
+  }
+  nav a svg{ width:15px; height:15px; opacity:0.85; flex-shrink:0; }
+  nav a.active{ background: var(--violet-soft); color: var(--text); }
+  nav a.active svg{ color: var(--violet); opacity:1; }
+  nav a:hover:not(.active){ background: var(--line-soft); color:var(--text); }
+
+  .sidebar-status{
+    margin-top:auto;
+    background: var(--panel-alt);
+    border:1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding:13px 14px;
+    font-size:11.5px;
+    color:var(--muted);
+    line-height:1.5;
+  }
+  .sidebar-status .row{ display:flex; align-items:center; gap:7px; margin-top:5px; }
+  .sidebar-status .led{
+    width:6px; height:6px; border-radius:50%; background:var(--mint);
+    box-shadow:0 0 6px 1px #5fe3c466;
+  }
+  .sidebar-status .val{ color:var(--text); font-family:'JetBrains Mono'; font-size:11.5px; }
+
+  /* ---------- Main ---------- */
+  main{ flex:1; padding: 26px 38px 46px; max-width: 1220px; }
+  header.top{
+    display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:26px; gap:20px;
+  }
+  header.top h1{ font-size:23px; font-weight:600; }
+  header.top p{ color:var(--muted); font-size:13px; margin-top:5px; max-width:480px; line-height:1.5; }
+
+  .top-actions{ display:flex; align-items:center; gap:10px; flex-shrink:0; }
+  .pill{
+    display:flex; align-items:center; gap:7px; flex-shrink:0;
+    background: var(--panel-alt); border:1px solid var(--line);
+    padding:7px 13px 7px 11px; border-radius:20px; font-size:12px; color:var(--muted); font-weight:500;
+  }
+  .pill .pulse{
+    width:6px; height:6px; border-radius:50%; background:var(--mint);
+    box-shadow:0 0 0 0 rgba(95,227,196,0.6);
+    animation: pulse 2.2s infinite;
+  }
+  @keyframes pulse{
+    0%{ box-shadow:0 0 0 0 rgba(95,227,196,0.45); }
+    70%{ box-shadow:0 0 0 7px rgba(95,227,196,0); }
+    100%{ box-shadow:0 0 0 0 rgba(95,227,196,0); }
+  }
+  .icon-btn{
+    width:34px; height:34px; border-radius:10px;
+    background: var(--panel-alt); border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    color:var(--muted); cursor:pointer; position:relative; flex-shrink:0;
+    transition: color .12s ease, border-color .12s ease;
+  }
+  .icon-btn svg{ width:15px; height:15px; }
+  .icon-btn:hover{ color:var(--text); border-color:#2a2e3a; }
+  .icon-btn .badge-dot{
+    position:absolute; top:-4px; right:-4px;
+    background:var(--coral); color:#0a0b10; font-size:9px; font-weight:700;
+    border-radius:10px; padding:1px 5px; font-family:'JetBrains Mono';
+  }
+  .user-chip{
+    display:flex; align-items:center; gap:9px;
+    background: var(--panel-alt); border:1px solid var(--line);
+    border-radius:20px; padding:5px 12px 5px 5px; cursor:pointer; flex-shrink:0;
+  }
+  .user-chip .avatar{
+    width:26px; height:26px; border-radius:50%;
+    background: linear-gradient(135deg, var(--violet), var(--mint));
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Space Grotesk'; font-weight:700; font-size:11px; color:#0a0b10;
+  }
+  .user-chip .who{ line-height:1.25; }
+  .user-chip .who .name{ font-size:12.5px; font-weight:600; }
+  .user-chip .who .role{ font-size:10.5px; color:var(--muted); }
+
+  /* ---------- Hero / generate ---------- */
+  .hero{
+    position:relative;
+    overflow:hidden;
+    background: var(--panel);
+    border:1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 30px 32px;
+    margin-bottom: 16px;
+    display:flex; align-items:center; justify-content:space-between; gap:30px;
+    flex-wrap:wrap;
+  }
+  .hero::before{
+    content:'';
+    position:absolute; inset:0;
+    background: radial-gradient(420px 260px at 88% 20%, #9b8bfa1a 0%, transparent 70%);
+    pointer-events:none;
+  }
+  .hero-text{ position:relative; max-width:340px; }
+  .hero-eyebrow{
+    display:inline-block; font-size:10.5px; text-transform:uppercase; letter-spacing:0.1em;
+    color: var(--violet); font-weight:600; margin-bottom:10px;
+  }
+  .hero-text h2{ font-size:20px; font-weight:600; margin-bottom:8px; line-height:1.25; }
+  .hero-text p{ color:var(--muted); font-size:13px; line-height:1.6; }
+
+  form.gen{
+    position:relative;
+    display:flex; gap:8px; flex:1; min-width:300px; max-width:460px;
+  }
+  form.gen input{
+    flex:1;
+    background: #060708;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:13px 15px;
+    color:var(--text);
+    font-family:'JetBrains Mono';
+    font-size:12.5px;
+    outline:none;
+    transition: border-color .15s ease;
+  }
+  form.gen input::placeholder{ color:var(--muted-dim); }
+  form.gen input:focus{ border-color: var(--violet); }
+  form.gen button{
+    background: var(--text);
+    color:#0a0b10; border:none; border-radius:10px;
+    padding: 0 22px; font-weight:600; font-size:13px;
+    cursor:pointer; font-family:'Space Grotesk';
+    transition: transform .12s ease, opacity .12s ease;
+  }
+  form.gen button:hover{ opacity:0.88; transform:translateY(-1px); }
+  form.gen button:active{ transform:translateY(0); }
+  form.gen button:disabled{ opacity:0.6; cursor:default; transform:none; }
+
+  .result-link{
+    display:none;
+    flex-direction:column;
+    gap:8px;
+    margin-top:12px;
+    background: var(--panel-alt);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:12px 14px;
+  }
+  .result-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .result-label{
+    font-size:10.5px; text-transform:uppercase; letter-spacing:0.06em;
+    color: var(--muted-dim); font-weight:600; flex-shrink:0;
+  }
+  .result-value{ display:flex; align-items:center; gap:10px; min-width:0; }
+  .result-value span.mono{
+    font-size:12px; color:var(--mint); overflow:hidden; text-overflow:ellipsis;
+    white-space:nowrap; max-width:220px;
+  }
+  #trackingIdText{ color: var(--violet); }
+  .result-link button{
+    background:transparent; border:1px solid var(--line); color:var(--muted);
+    border-radius:6px; padding:4px 10px; font-size:10.5px; cursor:pointer; font-family:'Inter';
+    flex-shrink:0;
+  }
+  .result-link button:hover{ color:var(--text); border-color:#333747; }
+
+  /* ---------- Stats ---------- */
+  .stats{
+    display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:20px;
+  }
+  .stat{
+    background: var(--panel); border:1px solid var(--line); border-radius: var(--radius-md);
+    padding: 17px 18px;
+    transition: border-color .15s ease;
+  }
+  .stat:hover{ border-color:#2a2e3a; }
+  .stat .top-row{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;}
+  .stat .icon{
+    width:28px; height:28px; border-radius:8px; background:var(--panel-alt);
+    display:flex; align-items:center; justify-content:center;
+    color: var(--violet);
+  }
+  .stat .icon svg{ width:14px; height:14px; }
+  .stat .trend{ font-size:10.5px; color:var(--mint); font-family:'JetBrains Mono'; }
+  .stat .num{ font-size:23px; font-weight:700; font-family:'Space Grotesk'; }
+  .stat .lbl{ color:var(--muted); font-size:11.5px; margin-top:3px; }
+  .stat.warn .icon{ color: var(--coral); }
+  .stat.warn .trend{ color: var(--coral); }
+
+  /* ---------- Grid panels ---------- */
+  .grid2{ display:grid; grid-template-columns: 1.55fr 1fr; gap:14px; }
+
+  .panel{
+    background: var(--panel); border:1px solid var(--line); border-radius: var(--radius-lg);
+    padding: 22px 24px;
+  }
+  .panel-head{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px; }
+  .panel-head h3{ font-size:14.5px; font-weight:600; }
+  .panel-head .sub{ font-size:11.5px; color:var(--muted); margin-top:3px; }
+  .panel-head .view-all{ font-size:11.5px; color:var(--muted); text-decoration:none; font-weight:500; }
+  .panel-head .view-all:hover{ color:var(--text); }
+
+  table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  thead th{
+    text-align:left; color:var(--muted-dim); font-weight:600; font-size:10.5px;
+    text-transform:uppercase; letter-spacing:0.06em; padding-bottom:11px;
+    border-bottom:1px solid var(--line);
+  }
+  tbody td{ padding:12px 0; border-bottom:1px solid var(--line-soft); color:var(--text); vertical-align:middle; }
+  tbody tr:last-child td{ border-bottom:none; }
+  .ip{ font-family:'JetBrains Mono'; color:var(--text); font-size:12px; }
+  .time{ color:var(--muted); font-size:11.5px; }
+  .badge{
+    display:inline-flex; align-items:center; gap:5px;
+    padding:3.5px 9px; border-radius:20px; font-size:10.5px; font-weight:600;
+  }
+  .badge.ok{ background:var(--mint-soft); color:var(--mint); }
+  .badge.flag{ background:var(--coral-soft); color:var(--coral); }
+  .badge.dot::before{ content:''; width:5px; height:5px; border-radius:50%; background:currentColor; flex-shrink:0; }
+  .req-cell{ display:flex; align-items:center; gap:8px; }
+  .req-bar{ width:44px; height:4px; border-radius:3px; background:var(--line); overflow:hidden; }
+  .req-bar span{ display:block; height:100%; border-radius:3px; background:var(--mint); }
+  .req-bar.hot span{ background:var(--coral); }
+
+  .trace-wrap{ display:flex; flex-direction:column; height:100%; }
+  .trace-svg{ width:100%; height:150px; margin-bottom:6px; }
+  .trace-meta{
+    display:flex; justify-content:space-between; align-items:baseline;
+    padding-top:14px; border-top:1px solid var(--line); margin-top:6px;
+  }
+  .trace-meta .big{ font-size:27px; font-weight:700; font-family:'Space Grotesk'; }
+  .trace-meta .sub2{ font-size:11px; color:var(--muted); margin-top:2px; }
+  .trace-meta .side{ text-align:right; }
+  .trace-legend{ display:flex; gap:16px; margin-top:14px; }
+  .trace-legend .item{ display:flex; align-items:center; gap:6px; font-size:11px; color:var(--muted); }
+  .trace-legend .sw{ width:9px; height:2.5px; border-radius:2px; }
+
+  footer.note{
+    margin-top:20px; font-size:11px; color:var(--muted-dim); text-align:center;
+  }
+
+  @media (max-width: 940px){
+    body{ flex-direction:column; }
+    aside{ width:100%; height:auto; position:relative; flex-direction:row; align-items:center; overflow-x:auto; gap:20px; padding:16px; }
+    .search-box, .sidebar-status{ display:none; }
+    .stats{ grid-template-columns: repeat(2,1fr); }
+    .grid2{ grid-template-columns: 1fr; }
+    main{ padding:22px 18px 34px; }
+    header.top{ flex-wrap:wrap; }
+  }
+</style>
+</head>
+<body>
+
+<aside>
+  <div class="brand">
+    <div class="brand-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#9b8bfa" stroke-width="1.6"><path d="M3 12h4l2-7 4 14 2-7h6"/></svg>
+    </div>
+    <span>TraceRoute</span>
+  </div>
+
+  <div class="search-box">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+    <input type="text" placeholder="Search">
+    <kbd>F</kbd>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-label">Monitor</div>
+    <nav>
+      <a href="/" class="active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="12" width="4" height="8"/><rect x="10" y="7" width="4" height="13"/><rect x="17" y="3" width="4" height="17"/></svg>
+        Overview
+      </a>
+      <a href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        Click log
+      </a>
+      <a href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2 3 6v6c0 5 4 8 9 10 5-2 9-5 9-10V6l-9-4Z"/></svg>
+        Flagged IPs
+      </a>
+      <a href="/links">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1.5-1.5"/></svg>
+        My links
+      </a>
+    </nav>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-label">Configure</div>
+    <nav>
+      <a href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg>
+        Rate limits
+      </a>
+      <a href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
+        Settings
+      </a>
+    </nav>
+  </div>
+
+  <div class="sidebar-status">
+    Backend connection
+    <div class="row"><span class="led"></span><span class="val">127.0.0.1:5000</span></div>
+  </div>
+</aside>
+
+<main>
+  <header class="top">
+    <div>
+      <h1>Signal monitor</h1>
+      <p>Watch where your forwarding links get shared, and catch repeated hits before they turn into a brute-force attempt.</p>
+    </div>
+    <div class="top-actions">
+      <div class="pill"><span class="pulse"></span> Live</div>
+      <div class="icon-btn" title="Notifications">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+        <span class="badge-dot">2</span>
+      </div>
+      <div class="user-chip">
+        <div class="avatar">TR</div>
+        <div class="who">
+          <div class="name">Admin</div>
+          <div class="role">Operator</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-text">
+      <span class="hero-eyebrow">New link</span>
+      <h2>Generate a tracking link</h2>
+      <p>Every click gets logged with timestamp, IP and request rate, so you can see who's using it and flag anything abnormal.</p>
+    </div>
+    <div style="flex:1; min-width:300px; position:relative;">
+      <form class="gen" action="/generate" method="POST" id="genForm">
+        <input type="text" name="url" placeholder="https://your-destination-url.com" required>
+        <button type="submit">Generate</button>
+      </form>
+      <div class="result-link" id="resultLink">
+        <div class="result-row">
+          <span class="result-label">Tracking link</span>
+          <div class="result-value">
+            <span id="resultText" class="mono"></span>
+            <button type="button" id="copyBtn">Copy</button>
+          </div>
+        </div>
+        <div class="result-row">
+          <span class="result-label">Tracking ID</span>
+          <div class="result-value">
+            <span id="trackingIdText" class="mono"></span>
+            <button type="button" id="copyIdBtn">Copy</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="stats">
+    <div class="stat">
+      <div class="top-row">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1.5-1.5"/></svg></div>
+        <span class="trend">+2 this wk</span>
+      </div>
+      <div class="num">{{active_links}}</div>
+      <div class="lbl">Active links</div>
+    </div>
+    <div class="stat">
+      <div class="top-row">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 6h16M4 12h16M4 18h10"/></svg></div>
+        <span class="trend">+38 today</span>
+      </div>
+      <div class="num">{{all_clicks}}</div>
+      <div class="lbl">Total clicks</div>
+    </div>
+    <div class="stat">
+      <div class="top-row">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18M3 12h18"/></svg></div>
+        <span class="trend">stable</span>
+      </div>
+      <div class="num">{{unique_ips}}</div>
+      <div class="lbl">Unique IPs</div>
+    </div>
+    <div class="stat warn">
+      <div class="top-row">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 9v4M12 17h.01M10.3 3.9 2.5 18a1.8 1.8 0 0 0 1.6 2.7h15.8a1.8 1.8 0 0 0 1.6-2.7L13.7 3.9a1.8 1.8 0 0 0-3.4 0Z"/></svg></div>
+        <span class="trend">review</span>
+      </div>
+      <div class="num">3</div>
+      <div class="lbl">Flagged for repeat hits</div>
+    </div>
+  </section>
+
+  <section class="grid2">
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <h3>Recent activity</h3>
+          <div class="sub">Newest clicks across all your links</div>
+        </div>
+        <a href="/links" class="view-all">View all →</a>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Time</th><th>IP address</th><th>Link</th><th>Rate</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="time mono">14:02:11</td>
+            <td class="ip">203.0.113.44</td>
+            <td class="mono time">/t/8f2a</td>
+            <td><div class="req-cell"><div class="req-bar"><span style="width:8%"></span></div><span class="mono time">1/min</span></div></td>
+            <td><span class="badge ok dot">normal</span></td>
+          </tr>
+          <tr>
+            <td class="time mono">14:01:58</td>
+            <td class="ip">198.51.100.7</td>
+            <td class="mono time">/t/8f2a</td>
+            <td><div class="req-cell"><div class="req-bar"><span style="width:8%"></span></div><span class="mono time">1/min</span></div></td>
+            <td><span class="badge ok dot">normal</span></td>
+          </tr>
+          <tr>
+            <td class="time mono">14:01:40</td>
+            <td class="ip">192.0.2.116</td>
+            <td class="mono time">/t/c91d</td>
+            <td><div class="req-cell"><div class="req-bar hot"><span style="width:92%"></span></div><span class="mono time">27/min</span></div></td>
+            <td><span class="badge flag dot">flagged</span></td>
+          </tr>
+          <tr>
+            <td class="time mono">14:00:52</td>
+            <td class="ip">203.0.113.201</td>
+            <td class="mono time">/t/f30e</td>
+            <td><div class="req-cell"><div class="req-bar"><span style="width:15%"></span></div><span class="mono time">2/min</span></div></td>
+            <td><span class="badge ok dot">normal</span></td>
+          </tr>
+          <tr>
+            <td class="time mono">14:00:11</td>
+            <td class="ip">192.0.2.116</td>
+            <td class="mono time">/t/c91d</td>
+            <td><div class="req-cell"><div class="req-bar hot"><span style="width:82%"></span></div><span class="mono time">24/min</span></div></td>
+            <td><span class="badge flag dot">flagged</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <h3>Signal trace</h3>
+          <div class="sub">Click rate over the last hour</div>
+        </div>
+      </div>
+      <div class="trace-wrap">
+        <svg class="trace-svg" viewBox="0 0 320 150" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="fillMint" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#5fe3c4" stop-opacity="0.28"/>
+              <stop offset="100%" stop-color="#5fe3c4" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <g stroke="#1c1f28" stroke-width="1">
+            <line x1="0" y1="30" x2="320" y2="30"/>
+            <line x1="0" y1="75" x2="320" y2="75"/>
+            <line x1="0" y1="120" x2="320" y2="120"/>
+          </g>
+          <path d="M0,110 C20,105 35,95 50,100 C70,108 85,112 100,105 C120,96 130,20 145,15 C158,11 168,50 180,70 C195,92 210,100 225,98 C245,95 260,60 280,40 C295,26 305,30 320,35"
+                fill="none" stroke="#5fe3c4" stroke-width="2" stroke-linecap="round"/>
+          <path d="M0,110 C20,105 35,95 50,100 C70,108 85,112 100,105 C120,96 130,20 145,15 C158,11 168,50 180,70 C195,92 210,100 225,98 C245,95 260,60 280,40 C295,26 305,30 320,35 L320,150 L0,150 Z"
+                fill="url(#fillMint)" stroke="none"/>
+          <circle cx="145" cy="15" r="4" fill="#0e1015" stroke="#ff7a85" stroke-width="2"/>
+          <circle cx="145" cy="15" r="9" fill="none" stroke="#ff7a85" stroke-width="1" opacity="0.4"/>
+          <text x="150" y="12" font-family="JetBrains Mono" font-size="9" fill="#ff7a85">spike · 27/min</text>
+        </svg>
+        <div class="trace-meta">
+          <div>
+            <div class="big">312</div>
+            <div class="sub2">clicks tracked</div>
+          </div>
+          <div class="side">
+            <div class="big" style="color:#ff7a85;">1</div>
+            <div class="sub2">anomaly detected</div>
+          </div>
+        </div>
+        <div class="trace-legend">
+          <div class="item"><span class="sw" style="background:#5fe3c4"></span>Click rate</div>
+          <div class="item"><span class="sw" style="background:#ff7a85"></span>Above threshold</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="note">Connected to your local backend at 127.0.0.1:5000 — activity shown above is illustrative until wired to live logs.</footer>
+</main>
+
+<script>
+  const form = document.getElementById('genForm');
+  const resultLink = document.getElementById('resultLink');
+  const resultText = document.getElementById('resultText');
+  const trackingIdText = document.getElementById('trackingIdText');
+  const copyBtn = document.getElementById('copyBtn');
+  const copyIdBtn = document.getElementById('copyIdBtn');
+
+  const genBtn = form.querySelector('button[type="submit"]');
+
+  // Submit via fetch so the page never navigates away — link + tracking ID render inline below the form.
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const url = form.url.value.trim();
+    if (!url) return;
+
+    const originalLabel = genBtn.textContent;
+    genBtn.textContent = 'Generating…';
+    genBtn.disabled = true;
+
+    try {
+      const res = await fetch(form.action, {
+        method: 'POST',
+        body: new FormData(form)
+      });
+
+      if (!res.ok) throw new Error('Request failed: ' + res.status);
+
+      const contentType = res.headers.get('content-type') || '';
+      let link = '';
+      let trackingId = '';
+
+      if (contentType.includes('application/json')) {
+        const data = await res.json();
+        link = data.short_url || data.tracking_url || data.url || '';
+        trackingId = data.tracking_id || data.id || '';
+        if (!link && !trackingId) link = JSON.stringify(data);
+      } else {
+        link = (await res.text()).trim();
+      }
+
+      resultText.textContent = link || '—';
+      trackingIdText.textContent = trackingId || '—';
+      resultLink.style.display = 'flex';
+      form.reset();
+    } catch (err) {
+      resultText.textContent = 'Could not generate link — check the backend is running.';
+      trackingIdText.textContent = '—';
+      resultLink.style.display = 'flex';
+    } finally {
+      genBtn.textContent = originalLabel;
+      genBtn.disabled = false;
+    }
+  });
+
+  copyBtn.addEventListener('click', () => {
+    navigator.clipboard.writeText(resultText.textContent);
+    copyBtn.textContent = 'Copied';
+    setTimeout(() => copyBtn.textContent = 'Copy', 1200);
+  });
+
+  copyIdBtn.addEventListener('click', () => {
+    navigator.clipboard.writeText(trackingIdText.textContent);
+    copyIdBtn.textContent = 'Copied';
+    setTimeout(() => copyIdBtn.textContent = 'Copy', 1200);
+  });
+</script>
+
+</body>
+</html>
