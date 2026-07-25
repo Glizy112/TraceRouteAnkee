@@ -1189,28 +1189,34 @@ def all_links():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute(
-        "SELECT tracking_id, destination_url, created_at FROM links ORDER BY created_at DESC"
-    )
-    rows = cursor.fetchall()
+    try:
+        cursor.execute(
+            "SELECT tracking_id, destination_url, created_at FROM links ORDER BY created_at DESC"
+        )
+        rows = cursor.fetchall()
 
-    links_list = []
-    for row in rows:
-        tid = row["tracking_id"]
-        cursor.execute("SELECT COUNT(*) AS c FROM clicks WHERE tracking_id=?", (tid,))
-        total_clicks = cursor.fetchone()["c"]
-        cursor.execute("SELECT COUNT(*) AS c FROM traversal_nodes WHERE parent_tracking_id=?", (tid,))
-        total_children = cursor.fetchone()["c"]
-        links_list.append({
-            "tracking_id": tid,
-            "destination_url": row["destination_url"],
-            "created_at": row["created_at"],
-            "total_clicks": total_clicks,
-            "total_children": total_children,
-        })
+        links_list = []
+        for row in rows:
+            tid = row["tracking_id"]
+            cursor.execute("SELECT COUNT(*) AS c FROM clicks WHERE tracking_id=?", (tid,))
+            total_clicks = cursor.fetchone()["c"]
+            cursor.execute("SELECT COUNT(*) AS c FROM traversal_nodes WHERE parent_tracking_id=?", (tid,))
+            total_children = cursor.fetchone()["c"]
+            links_list.append({
+                "tracking_id": tid,
+                "destination_url": row["destination_url"],
+                "created_at": row["created_at"],
+                "total_clicks": total_clicks,
+                "total_children": total_children,
+            })
+        return render_template("links.html", links=links_list)
 
-    conn.close()
-    return render_template("links.html", links=links_list)
+    except Exception as e:
+        print(f"Database error occurred: {e}")
+        return "Internal Server Error", 500  
+    
+    finally:
+        conn.close()
 
 
 @app.route("/")
@@ -1218,16 +1224,24 @@ def home():
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    cursor.execute("SELECT max(id) AS c FROM clicks")
-    all_clicks = cursor.fetchone()["c"]
+    try:
+        cursor.execute("SELECT max(id) AS c FROM clicks")
+        all_clicks = cursor.fetchone()["c"]
 
-    cursor.execute("SELECT COUNT(DISTINCT ip_address) AS unique_ip from clicks")
-    unique_ips = cursor.fetchone()["unique_ip"]
+        cursor.execute("SELECT COUNT(DISTINCT ip_address) AS unique_ip from clicks")
+        unique_ips = cursor.fetchone()["unique_ip"]
 
-    cursor.execute("SELECT COUNT(DISTINCT tracking_id) AS active_link from clicks")
-    active_links = cursor.fetchone()["active_link"]
-    
-    return render_template("index.html", all_clicks=all_clicks, unique_ips=unique_ips, active_links=active_links)
+        cursor.execute("SELECT COUNT(DISTINCT tracking_id) AS active_link from clicks")
+        active_links = cursor.fetchone()["active_link"]
+        
+        return render_template("index.html", all_clicks=all_clicks, unique_ips=unique_ips, active_links=active_links)
+
+    except Exception as e:
+        print(f"Database error occurred: {e}")
+        return "Internal Server Error", 500  
+
+    finally:
+        conn.close()
 
 
 # ---------------- Generate Tracking Link ----------------
@@ -1244,16 +1258,22 @@ def generate():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute(
-        """
-        INSERT INTO links (tracking_id, destination_url)
-        VALUES (?, ?)
-        """,
-        (tracking_id, destination),
-    )
+    try:
+        cursor.execute(
+            """
+            INSERT INTO links (tracking_id, destination_url)
+            VALUES (?, ?)
+            """,
+            (tracking_id, destination),
+        )
+        conn.commit()
 
-    conn.commit()
-    conn.close()
+    except Exception as e:
+        print(f"Database error occurred: {e}")
+        return "Internal Server Error", 500  
+    
+    finally:
+        conn.close()
 
     return jsonify({
         "tracking_id": tracking_id,
@@ -1268,34 +1288,42 @@ def track(tracking_id):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute(
-        "SELECT destination_url FROM links WHERE tracking_id=?",
-        (tracking_id,),
-    )
-    link = cursor.fetchone()
+    try:
+        cursor.execute(
+            "SELECT destination_url FROM links WHERE tracking_id=?",
+            (tracking_id,),
+        )
+        link = cursor.fetchone()
 
-    if not link:
+        if not link:
+            conn.close()
+            return render_template("404.html"), 404
+
+        destination = link["destination_url"]
+
+        ip = request.remote_addr
+        user_agent = request.headers.get("User-Agent")
+        browser = detect_browser(user_agent)
+        referer = request.headers.get("Referer")
+
+        cursor.execute(
+            """
+            INSERT INTO clicks
+            (tracking_id, ip_address, user_agent, browser, referer)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (tracking_id, ip, user_agent, browser, referer),
+        )
+        conn.commit()
+
+    except Exception as e:
+        print(f"Database error occurred: {e}")
+        return "Internal Server Error", 500  
+    
+    finally:
         conn.close()
-        return render_template("404.html"), 404
 
-    destination = link["destination_url"]
-
-    ip = request.remote_addr
-    user_agent = request.headers.get("User-Agent")
-    browser = detect_browser(user_agent)
-    referer = request.headers.get("Referer")
-
-    cursor.execute(
-        """
-        INSERT INTO clicks
-        (tracking_id, ip_address, user_agent, browser, referer)
-        VALUES (?, ?, ?, ?, ?)
-        """,
-        (tracking_id, ip, user_agent, browser, referer),
-    )
-
-    conn.commit()
-    conn.close()
+    # conn.close()
 
     return redirect(destination)
 
@@ -1307,57 +1335,65 @@ def analytics(tracking_id):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Make sure the tracking ID actually exists before building a whole page for it
-    cursor.execute("SELECT tracking_id FROM links WHERE tracking_id=?", (tracking_id,))
-    if not cursor.fetchone():
+    try:
+        # Make sure the tracking ID actually exists before building a whole page for it
+        cursor.execute("SELECT tracking_id FROM links WHERE tracking_id=?", (tracking_id,))
+        if not cursor.fetchone():
+            conn.close()
+            return render_template("404.html"), 404
+
+        # Total clicks for this specific link
+        cursor.execute(
+            "SELECT COUNT(*) AS total_clicks FROM clicks WHERE tracking_id=?",
+            (tracking_id,),
+        )
+        total_clicks = cursor.fetchone()["total_clicks"]
+
+        # Parent tracking ID and generation
+        cursor.execute(
+            "SELECT parent_tracking_id, generation FROM traversal_nodes WHERE tracking_id=?",
+            (tracking_id,),
+        )
+        parent_row = cursor.fetchone()
+
+        if parent_row:
+            parent_tracking = parent_row["parent_tracking_id"]
+            generation = parent_row["generation"]
+        else:
+            parent_tracking = "Original Link"
+            generation = 0
+
+        # Total direct children of this link
+        cursor.execute(
+            "SELECT COUNT(*) AS total_children FROM traversal_nodes WHERE parent_tracking_id=?",
+            (tracking_id,),
+        )
+        total_children = cursor.fetchone()["total_children"]
+
+        # Click history for this specific link
+        cursor.execute(
+            """
+            SELECT ip_address, browser, clicked_at
+            FROM clicks
+            WHERE tracking_id=?
+            ORDER BY clicked_at DESC
+            """,
+            (tracking_id,),
+        )
+        click_history = cursor.fetchall()
+
+        # Full forwarding tree — walk up to the original root link, then build the whole tree back down
+        root_id = find_root(cursor, tracking_id)
+        tree_data = build_tree(cursor, root_id)
+
+    except Exception as e:
+        print(f"Database error occurred: {e}")
+        return "Internal Server Error", 500  
+    
+    finally:
         conn.close()
-        return render_template("404.html"), 404
 
-    # Total clicks for this specific link
-    cursor.execute(
-        "SELECT COUNT(*) AS total_clicks FROM clicks WHERE tracking_id=?",
-        (tracking_id,),
-    )
-    total_clicks = cursor.fetchone()["total_clicks"]
-
-    # Parent tracking ID and generation
-    cursor.execute(
-        "SELECT parent_tracking_id, generation FROM traversal_nodes WHERE tracking_id=?",
-        (tracking_id,),
-    )
-    parent_row = cursor.fetchone()
-
-    if parent_row:
-        parent_tracking = parent_row["parent_tracking_id"]
-        generation = parent_row["generation"]
-    else:
-        parent_tracking = "Original Link"
-        generation = 0
-
-    # Total direct children of this link
-    cursor.execute(
-        "SELECT COUNT(*) AS total_children FROM traversal_nodes WHERE parent_tracking_id=?",
-        (tracking_id,),
-    )
-    total_children = cursor.fetchone()["total_children"]
-
-    # Click history for this specific link
-    cursor.execute(
-        """
-        SELECT ip_address, browser, clicked_at
-        FROM clicks
-        WHERE tracking_id=?
-        ORDER BY clicked_at DESC
-        """,
-        (tracking_id,),
-    )
-    click_history = cursor.fetchall()
-
-    # Full forwarding tree — walk up to the original root link, then build the whole tree back down
-    root_id = find_root(cursor, tracking_id)
-    tree_data = build_tree(cursor, root_id)
-
-    conn.close()
+    # conn.close()
 
     return render_template(
         "analytics.html",
@@ -1378,41 +1414,50 @@ def share(tracking_id):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute(
-        "SELECT destination_url FROM links WHERE tracking_id=?",
-        (tracking_id,),
-    )
-    link = cursor.fetchone()
+    try:
+        cursor.execute(
+            "SELECT destination_url FROM links WHERE tracking_id=?",
+            (tracking_id,),
+        )
+        link = cursor.fetchone()
 
-    if not link:
+        if not link:
+            conn.close()
+            return render_template("404.html"), 404
+
+        destination = link["destination_url"]
+
+        cursor.execute(
+            "SELECT generation FROM traversal_nodes WHERE tracking_id=?",
+            (tracking_id,),
+        )
+        parent = cursor.fetchone()
+        generation = (parent["generation"] + 1) if parent else 1
+
+        child_tracking = generate_tracking_id()
+
+        cursor.execute(
+            "INSERT INTO links (tracking_id, destination_url) VALUES (?, ?)",
+            (child_tracking, destination),
+        )
+        cursor.execute(
+            """
+            INSERT INTO traversal_nodes (tracking_id, parent_tracking_id, generation)
+            VALUES (?, ?, ?)
+            """,
+            (child_tracking, tracking_id, generation),
+        )
+
+        conn.commit()
+
+    except Exception as e:
+        print(f"Database error occurred: {e}")
+        return "Internal Server Error", 500  
+    
+    finally:
         conn.close()
-        return render_template("404.html"), 404
-
-    destination = link["destination_url"]
-
-    cursor.execute(
-        "SELECT generation FROM traversal_nodes WHERE tracking_id=?",
-        (tracking_id,),
-    )
-    parent = cursor.fetchone()
-    generation = (parent["generation"] + 1) if parent else 1
-
-    child_tracking = generate_tracking_id()
-
-    cursor.execute(
-        "INSERT INTO links (tracking_id, destination_url) VALUES (?, ?)",
-        (child_tracking, destination),
-    )
-    cursor.execute(
-        """
-        INSERT INTO traversal_nodes (tracking_id, parent_tracking_id, generation)
-        VALUES (?, ?, ?)
-        """,
-        (child_tracking, tracking_id, generation),
-    )
-
-    conn.commit()
-    conn.close()
+    
+    # conn.close()
 
     return jsonify({
         "parent_tracking_id": tracking_id,

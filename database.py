@@ -55,7 +55,7 @@ def get_db_connection():
     """)
 
     conn.commit()
-    conn.close()
+    # conn.close()
 
     print("Database Created Successfully")
 
